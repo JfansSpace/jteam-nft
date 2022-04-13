@@ -6,5 +6,5 @@ pragma solidity ^0.8.0;
 interface IChampionNFTBridge {
 
     
-    function setFristBuy(uint tokenId, address account) external;
+    function setFirstBuy(uint tokenId, address account) external;
 }

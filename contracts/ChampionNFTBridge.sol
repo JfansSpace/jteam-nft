@@ -9,14 +9,14 @@ import "./lib/ChampionEIP712Upgradeable.sol";
 contract ChampionNFTBridge is BasicBridge, ChampionEIP712Upgradeable {
 
     /* --- EVENTS --- */
-    event SetFristBuy(address indexed operator, uint tokenId, address account);
-    event SetFristBuy_Validator(address indexed operator, uint tokenId, address account, bytes32 transactionHash);
+    event SetFirstBuy(address indexed operator, uint tokenId, address account);
+    event SetFirstBuy_Validator(address indexed operator, uint tokenId, address account, bytes32 transactionHash);
     event Delivery(address indexed operator, address sender, uint256 tokenId, uint256 value, bytes32 transactionHash);
     event SignedForTransferFromForeign(address indexed signer, bytes32 transactionHash);
 
 
     /* --- FIELDS --- */
-    mapping(uint => address) public     fristBuyMap;      //tokenID => account
+    mapping(uint => address) public     firstBuyMap;      //tokenID => account
     mapping(bytes32 => bool) public     transfersSigned;
     mapping(bytes32 => uint256) public  numTransfersSigned;
     address public                      jt_nft;
@@ -51,10 +51,10 @@ contract ChampionNFTBridge is BasicBridge, ChampionEIP712Upgradeable {
         medalamount_lv2 = amount_lv2;
     }
 
-    function setFristBuy(uint tokenId, address account) public onlyNFT_Owner {
+    function setFirstBuy(uint tokenId, address account) public onlyNFT_Owner {
         require(IChampionNFT(jt_nft).ownerOf(tokenId) == account, "the tokenId does not belong to account");
-        fristBuyMap[tokenId] = account;
-        emit SetFristBuy(_msgSender(), tokenId, account);
+        firstBuyMap[tokenId] = account;
+        emit SetFirstBuy(_msgSender(), tokenId, account);
     }
 
     function delivery(address sender, uint256 tokenId, uint256 value, bytes32 transactionHash, string memory signature) public whenNotPaused onlyValidator{
@@ -62,7 +62,7 @@ contract ChampionNFTBridge is BasicBridge, ChampionEIP712Upgradeable {
         require(!IChampionNFT(jt_nft).isDelivered(tokenId), "the tokenId has been delivered");
         require(verify(_msgSender(), sender, tokenId, value, transactionHash, signature), "signature verify failed");
         
-        if (fristBuyMap[tokenId] == sender) {
+        if (firstBuyMap[tokenId] == sender) {
             require(value >= medalamount_lv1, "not enough medals to delivery - lv1");
         }
         else {

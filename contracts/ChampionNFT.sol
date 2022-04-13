@@ -103,6 +103,10 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     return baseURI;
   }
 
+  function currentTokenId() external view returns (uint256) {
+    return tokenIdTracker.current();
+  }
+
   function walletOfOwner(address _owner) public view returns (uint256[] memory) {
     uint256 ownerTokenCount = balanceOf(_owner);
     uint256[] memory tokenIds = new uint256[](ownerTokenCount);
@@ -163,7 +167,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     for (uint i; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
         //調用 bridgeContractAddress 合約 設置記錄 首次購買人
-        IChampionNFTBridge(bridgeContractAddress).setFristBuy(tokenIdTracker.current(), _msgSender());
+        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
   }
@@ -183,7 +187,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     for (uint i; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
         //調用 bridgeContractAddress 合約 設置記錄 首次購買人
-        IChampionNFTBridge(bridgeContractAddress).setFristBuy(tokenIdTracker.current(), _msgSender());
+        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
   }
@@ -203,7 +207,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     for (uint i; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
         //調用 bridgeContractAddress 合約 設置記錄 首次購買人
-        IChampionNFTBridge(bridgeContractAddress).setFristBuy(tokenIdTracker.current(), _msgSender());
+        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
   }
@@ -224,7 +228,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     angleSaleCount += 1;
 
     _safeMint(_msgSender(), getValidTokenId());
-    IChampionNFTBridge(bridgeContractAddress).setFristBuy(tokenIdTracker.current(), _msgSender());
+    IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
     tokenIdTracker.increment();
   }
 
@@ -234,7 +238,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
   function mintReserve(uint tokenId) external whenNotPaused {
     require(reserveMap[tokenId] == _msgSender(), "the tokenId does not belong to you");
     _safeMint(_msgSender(), tokenId);
-    IChampionNFTBridge(bridgeContractAddress).setFristBuy(tokenId, _msgSender());
+    IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenId, _msgSender());
   }
 
 
@@ -304,6 +308,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
 
   //設置預定tokenId 信息
   function setReserve(uint256 tokenId, address account) external onlyOwner {
+    require(!_exists(tokenId),"tokenId already exists");
     reserveMap[tokenId] = account;
   }
 
@@ -311,6 +316,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
   function setReserveBatch(uint256[] memory tokenIds, address[] memory accounts) external onlyOwner {
     require(tokenIds.length == accounts.length, "The two arrays are not equal in length");
     for (uint i = 0; i < accounts.length; i++) {
+      require(!_exists(tokenIds[i]),"tokenId already exists");
       reserveMap[tokenIds[i]] = accounts[i];
     }
   }
@@ -322,7 +328,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
   function mintAdmin(address to) external onlyOwner{
     require(msg.sender == tx.origin, "No contracts allowed");
     _safeMint(to, getValidTokenId());
-    IChampionNFTBridge(bridgeContractAddress).setFristBuy(tokenIdTracker.current(), to);
+    IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), to);
     tokenIdTracker.increment();
   }
 
