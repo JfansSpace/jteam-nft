@@ -335,7 +335,8 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
   // 提款
   function withdraw() external onlyOwner {
     require(address(this).balance > 0, "no eth balance");
-    bool success = payable(msg.sender).send(address(this).balance);
-    require(success, "Payment did not go through!");
+    //bool success = payable(msg.sender).send(address(this).balance);
+    (bool sent, bytes memory data) = payable(msg.sender).call{value: address(this).balance}("");
+    require(sent, "Payment did not go through!");
   }
 }
