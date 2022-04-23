@@ -11,13 +11,15 @@ import "./BasicBridge.sol";
 
 /*
 
-冠軍俱樂部NFT 提货合约 部署在 OK链上， 负责收取 冠軍俱樂部 粉丝勋章
-核心方法：
-transferMedals： 收取冠軍俱樂部 粉丝勋章用于提货
+Esports Boys NFT Delivery Contract will be depolyed on the foreign chains, 
+and will be used to redeem the products
 
+Core Methods：
+transferMedals： receive fan medals on the foreign chains, 
+then the bridge client will listen to the events for redemption
 */
 
-contract ChampionDelivery is PausableUpgradeable, OwnableUpgradeable, ERC1155HolderUpgradeable {
+contract EsportsBoyDelivery is PausableUpgradeable, OwnableUpgradeable, ERC1155HolderUpgradeable {
 
 
     event TransferMedals(address indexed operator, uint tokenId, uint medalId, uint amount);

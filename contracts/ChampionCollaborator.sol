@@ -4,7 +4,10 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract ChampionCollaborator is OwnableUpgradeable {
+/*
+Add, set, remove, get collaborators who are eliable to receive the royalties
+*/
+contract EsportsBoyCollaborator is OwnableUpgradeable {
 
 
     struct Collaborator {

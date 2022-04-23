@@ -11,46 +11,50 @@ import "./interface/IChampionNFTBridge.sol";
 
 /*
 
-冠軍俱樂部NFT合約， 負責發行冠軍俱樂部NFT， 發行分 4個階段：
-天使期：300套，20%off，鎖定三個月
-早鳥期：300套，不打折，不鎖定
-預售期：300套，無折扣，無鎖倉
-公開發售期：100套 ，無折扣，無鎖倉
-核心方程：
-publicMint 公開發售铸币方法
-presaleMint 預售期铸币方法
-earlyBridMint 早鳥期铸币方法
-angleMint 天使期铸币方法
+Esports Boy NFT Contract: have 4 types of Wl, including prepaid angles, 
+prepaid eraly birds, non-prepaid presale, and public sale.
+
+1. angles and eraly birds do not need to pay on the mint day
+2. reserve some special numbers.
+3. allow one address mint more than one NFTs
+4. reveal image urls
+
+
+Core Methods：
+publicMint 
+presaleMint 
+earlyBridMint 
+angleMint 
 */
-contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
+contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   using Strings for uint256;
   using Counters for Counters.Counter;
 
-  address private                       bridgeContractAddress;  // 负责设置 冠軍俱樂部NFT 提货状态的合约
+  address private                       bridgeContractAddress;  // contract used to set the NFT delivery status
   string private                        baseURI;
-  string private                        notRevealedURI;           //未公开 URI
-  string private                        deliveredURI;             //已提货 URI
-  bytes32 private                       angleRoot;                //天使期 MerkleRoot
-  bytes32 private                       earlybirdRoot;            //早鸟期 MerkleRoot
-  bytes32 private                       presaleRoot;              //预售期 MerkleRoot
-  mapping(uint256 => address) private   reserveMap;               //预定Mapping  预定的tokenId => 预定地址
-  uint256 public                        publicPrice = 0.1 ether;  //公开销售的价格
-  uint256 public constant               ANGEL_SUPPLY = 300;       //天使期 铸币总数
-  uint256 public constant               EARLYBIRD_SUPPLY = 300;   //早鸟期 铸币总数
-  uint256 public constant               PRE_SUPPLY = 300;         //预售期 铸币总数
-  uint256 public constant               PUBLI_SUPPLY = 100;       //公开销售期 铸币总数
-  uint256 public                        angleSaleCount;           //天使期 铸币计数
-  uint256 public                        earlyBridSaleCount;       //天使期 铸币计数
-  uint256 public                        preSaleCount;             //天使期 铸币计数
-  uint256 public                        publicSaleCount;                //天使期 铸币计数
-  Counters.Counter public               tokenIdTracker;                 //tokenId 自增计数器
-  bool public                           isPublicSaleActive = false;     //是否激活公开销售
-  bool public                           isPreSaleActive = false;        //是否激活预售期
-  bool public                           isEarlyBirdSaleActive = false;  //是否激活早鸟期
-  bool public                           isAngelSaleActive = false;      //是否激活天使期
-  bool public                           isRevealed = false;             //nft 公开状态
-  mapping(uint256 => bool) public       deliveryMap;                    //提货Mapping  tokenId => 是否已提货
-  mapping(address => bool) public       angleSaleMints;                 //天使期 地址 => 是否已经铸币
+  string private                        notRevealedURI;           
+  string private                        deliveredURI;             
+  bytes32 private                       angleRoot;                // the angle's MerkleRoot
+  bytes32 private                       earlybirdRoot;            
+  bytes32 private                       presaleRoot;              
+  mapping(uint256 => address) private   reserveMap;               // for tokenid reservation
+  uint256 public                        publicPrice = 0.1 ether;  //todo add setter
+  uint256 public constant               ANGEL_SUPPLY = 300;       //todo add setter
+  uint256 public constant               EARLYBIRD_SUPPLY = 300;   //todo add setter
+  uint256 public constant               PRE_SUPPLY = 300;         //todo add setter
+  uint256 public constant               PUBLI_SUPPLY = 100;       //todo add setter
+  uint256 public                        angleSaleCount;           // keep track of angle mint number
+  uint256 public                        earlyBridSaleCount;       
+  uint256 public                        preSaleCount;             
+  uint256 public                        publicSaleCount;                
+  Counters.Counter public               tokenIdTracker;                 //tokenId increment
+  bool public                           isPublicSaleActive = false;     
+  bool public                           isPreSaleActive = false;        
+  bool public                           isEarlyBirdSaleActive = false;  
+  bool public                           isAngelSaleActive = false;      //?angle already finished
+  bool public                           isRevealed = false;             
+  mapping(uint256 => bool) public       deliveryMap;                    //tokenId => whether or not deliered
+  mapping(address => bool) public       angleSaleMints;                 //address => whether or not minted
 
   /* ----------- modifier ------------ */
 
@@ -153,9 +157,6 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
 
   /* ----------- external function ------------ */
 
-  /**
-    * public mint  公開銷售 鑄幣方法
-    */
   function publicMint(uint256 quantity) external payable 
     whenNotPaused
     publicSaleActive {
@@ -166,15 +167,12 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     publicSaleCount += quantity;
     for (uint i; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        //調用 bridgeContractAddress 合約 設置記錄 首次購買人
+        //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
   }
 
-  /**
-    * presale mint 預售期 鑄幣方法
-    */
   function presaleMint(uint256 quantity, bytes32[] calldata proof) external payable 
     whenNotPaused 
     preSaleActive {
@@ -186,15 +184,12 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     preSaleCount += quantity;
     for (uint i; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        //調用 bridgeContractAddress 合約 設置記錄 首次購買人
+        //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
   }
 
-  /**
-    * earlybrid mint 早鳥期 鑄幣方法 
-    */
   function earlyBridMint(uint256 quantity, bytes32[] calldata proof) external payable
     whenNotPaused
     earlyBirdSaleActive {
@@ -206,15 +201,12 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     earlyBridSaleCount += quantity;
     for (uint i; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        //調用 bridgeContractAddress 合約 設置記錄 首次購買人
+        //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
   }
 
-  /**
-    * angle mint  天使期 鑄幣方法  天使期已經提前收過ETH，鑄造方法不收取ETH
-    */
   function angleMint(bytes32[] calldata proof) external
     whenNotPaused
     angleSaleActive {
@@ -223,7 +215,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     require(!angleSaleMints[_msgSender()], "Address already minted their angle mint");
     require(MerkleProof.verify(proof, angleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in angle list");
 
-    //天使期 鑄幣 每個地址只能鑄造一個nft, 鑄造完成後記錄狀態，防止重複鑄造
+    //? change to one add mint multiple tokens
     angleSaleMints[_msgSender()] = true;
     angleSaleCount += 1;
 
@@ -232,9 +224,6 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     tokenIdTracker.increment();
   }
 
-  /**
-    * airdrop minting  预定鑄造方法 只允許鑄造 reserveMap 中 地址對應的 tokenID
-    */
   function mintReserve(uint tokenId) external whenNotPaused {
     require(reserveMap[tokenId] == _msgSender(), "the tokenId does not belong to you");
     _safeMint(_msgSender(), tokenId);
@@ -245,7 +234,7 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
 
   /* ----------- owner function ------------ */
 
-  //設置 nft 被提貨狀態, 允許 Bridge 合約或者 owner 調用
+  // only bridge owner can set delivery status 
   function setDelivered(uint tokenId, bool delivery) public whenNotPaused onlyBridge_Owner {
     deliveryMap[tokenId] = delivery;
   }
@@ -306,13 +295,13 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     publicPrice = amount;
   }
 
-  //設置預定tokenId 信息
+  //ser reserve tokenid
   function setReserve(uint256 tokenId, address account) external onlyOwner {
     require(!_exists(tokenId),"tokenId already exists");
     reserveMap[tokenId] = account;
   }
 
-  //批量設置預定tokenId 信息
+  //batch set reserve tokenid
   function setReserveBatch(uint256[] memory tokenIds, address[] memory accounts) external onlyOwner {
     require(tokenIds.length == accounts.length, "The two arrays are not equal in length");
     for (uint i = 0; i < accounts.length; i++) {
@@ -332,7 +321,6 @@ contract ChampionNFT is ERC721Enumerable, Ownable, Pausable {
     tokenIdTracker.increment();
   }
 
-  // 提款
   function withdraw() external onlyOwner {
     require(address(this).balance > 0, "no eth balance");
     //bool success = payable(msg.sender).send(address(this).balance);
