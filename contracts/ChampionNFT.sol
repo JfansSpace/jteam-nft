@@ -39,10 +39,10 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   bytes32 private                       presaleRoot;              
   mapping(uint256 => address) private   reserveMap;               // for tokenid reservation
   uint256 public                        publicPrice = 0.1 ether;  //todo add setter
-  uint256 public constant               ANGEL_SUPPLY = 300;       //todo add setter
-  uint256 public constant               EARLYBIRD_SUPPLY = 300;   //todo add setter
-  uint256 public constant               PRE_SUPPLY = 300;         //todo add setter
-  uint256 public constant               PUBLI_SUPPLY = 100;       //todo add setter
+  uint256 public                        ANGEL_SUPPLY = 300;       //todo add setter
+  uint256 public                        EARLYBIRD_SUPPLY = 300;   //todo add setter
+  uint256 public                        PRE_SUPPLY = 300;         //todo add setter
+  uint256 public                        PUBLI_SUPPLY = 100;       //todo add setter
   uint256 public                        angleSaleCount;           // keep track of angle mint number
   uint256 public                        earlyBridSaleCount;       
   uint256 public                        preSaleCount;             
@@ -54,7 +54,8 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   bool public                           isAngelSaleActive = false;      //?angle already finished
   bool public                           isRevealed = false;             
   mapping(uint256 => bool) public       deliveryMap;                    //tokenId => whether or not deliered
-  mapping(address => bool) public       angleSaleMints;                 //address => whether or not minted
+  mapping(address => uint256) public    angleSaleMintLimit;             //address => the upper limit of the mint quantity of Angel period
+  mapping(address => uint256) public    angleSaleMintCount;             //address => the number of minted during the Angel period
 
   /* ----------- modifier ------------ */
 
@@ -161,11 +162,12 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     whenNotPaused
     publicSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
+    require(quantity > 0, "quantity must be greater than 0");
     require(quantity + publicSaleCount <= PUBLI_SUPPLY,"Not enough PUBLI_SUPPLY");
     require(msg.value >= publicPrice * quantity, "Not enough ETH");
 
     publicSaleCount += quantity;
-    for (uint i; i < quantity; i++ ) {
+    for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
         //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
@@ -177,12 +179,13 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     whenNotPaused 
     preSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
+    require(quantity > 0, "quantity must be greater than 0");
     require(quantity + preSaleCount <= PRE_SUPPLY,"Not enough PRE_SUPPLY");
     require(msg.value >= publicPrice * quantity, "Not enough ETH");
     require(MerkleProof.verify(proof, presaleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in presale list");
 
     preSaleCount += quantity;
-    for (uint i; i < quantity; i++ ) {
+    for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
         //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
@@ -194,12 +197,13 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     whenNotPaused
     earlyBirdSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
+    require(quantity > 0, "quantity must be greater than 0");
     require(quantity + earlyBridSaleCount <= EARLYBIRD_SUPPLY,"Not enough EARLYBIRD_SUPPLY");
     require(msg.value >= publicPrice * quantity, "Not enough ETH");
     require(MerkleProof.verify(proof, earlybirdRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in earlybird list");
 
     earlyBridSaleCount += quantity;
-    for (uint i; i < quantity; i++ ) {
+    for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
         //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
@@ -207,21 +211,23 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     }
   }
 
-  function angleMint(bytes32[] calldata proof) external
+  function angleMint(uint256 quantity, bytes32[] calldata proof) external
     whenNotPaused
     angleSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
-    require(1 + angleSaleCount <= ANGEL_SUPPLY,"Not enough ANGEL_SUPPLY");
-    require(!angleSaleMints[_msgSender()], "Address already minted their angle mint");
+    require(quantity > 0, "quantity must be greater than 0");
+    require(quantity + angleSaleCount <= ANGEL_SUPPLY,"Not enough ANGEL_SUPPLY");
+    require(angleSaleMintCount[_msgSender()] + quantity <= angleSaleMintLimit[_msgSender()], "the number of caller mint exceeds the upper limit");
     require(MerkleProof.verify(proof, angleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in angle list");
 
-    //? change to one add mint multiple tokens
-    angleSaleMints[_msgSender()] = true;
-    angleSaleCount += 1;
+    angleSaleMintCount[_msgSender()] += quantity;
+    angleSaleCount += quantity;
 
-    _safeMint(_msgSender(), getValidTokenId());
-    IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
-    tokenIdTracker.increment();
+    for (uint i = 0; i < quantity; i++ ) {
+      _safeMint(_msgSender(), getValidTokenId());
+      IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
+      tokenIdTracker.increment();
+    }
   }
 
   function mintReserve(uint tokenId) external whenNotPaused {
@@ -294,7 +300,33 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   function setPublicPrice(uint256 amount) external onlyOwner {
     publicPrice = amount;
   }
+  
+  function setAngelSupply(uint256 amount) external onlyOwner {
+    ANGEL_SUPPLY = amount;
+  }
 
+  function setEarlyBirdSupply(uint256 amount) external onlyOwner {
+    EARLYBIRD_SUPPLY = amount;
+  }
+
+  function setPreSupply(uint256 amount) external onlyOwner {
+    PRE_SUPPLY = amount;
+  }
+
+  function setPublicSupply(uint256 amount) external onlyOwner {
+    PUBLI_SUPPLY = amount;
+  }
+
+  function setAngleMintLimit(address account, uint limit) external onlyOwner {
+    angleSaleMintLimit[account] = limit;
+  }
+
+  function setAngleMintLimitBatch(address[] memory accounts, uint[] memory limits) external onlyOwner {
+    require(limits.length == accounts.length, "The two arrays are not equal in length");
+    for (uint i = 0; i < accounts.length; i++) {
+      angleSaleMintLimit[accounts[i]] = limits[i];
+    }
+  }
   //ser reserve tokenid
   function setReserve(uint256 tokenId, address account) external onlyOwner {
     require(!_exists(tokenId),"tokenId already exists");
