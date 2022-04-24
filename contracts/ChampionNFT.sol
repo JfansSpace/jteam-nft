@@ -38,16 +38,20 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   bytes32 private                       earlybirdRoot;            
   bytes32 private                       presaleRoot;              
   mapping(uint256 => address) private   reserveMap;               // for tokenid reservation
-  uint256 public                        publicPrice = 0.1 ether;  //todo add setter
-  uint256 public                        ANGEL_SUPPLY = 300;       //todo add setter
-  uint256 public                        EARLYBIRD_SUPPLY = 300;   //todo add setter
-  uint256 public                        PRE_SUPPLY = 300;         //todo add setter
-  uint256 public                        PUBLI_SUPPLY = 100;       //todo add setter
+  uint256 public                        publicPrice;              //
+  uint256 public                        ANGEL_SUPPLY;             //
+  uint256 public                        EARLYBIRD_SUPPLY;         //
+  uint256 public                        PRE_SUPPLY;               //
+  uint256 public                        PUBLI_SUPPLY;             //
   uint256 public                        angleSaleCount;           // keep track of angle mint number
   uint256 public                        earlyBridSaleCount;       
   uint256 public                        preSaleCount;             
-  uint256 public                        publicSaleCount;                
-  Counters.Counter public               tokenIdTracker;                 //tokenId increment
+  uint256 public                        publicSaleCount;
+  uint256 public                        angleBeginId;                 //Angel period tokenId begin
+  uint256 public                        earlyBridBeginId;             //earlyBrid period tokenId begin
+  Counters.Counter public               tokenIdTracker_angle;         //angle tokenId increment
+  Counters.Counter public               tokenIdTracker_earlyBrid;     //earlyBrid tokenId increment
+  Counters.Counter public               tokenIdTracker;               //tokenId increment
   bool public                           isPublicSaleActive = false;     
   bool public                           isPreSaleActive = false;        
   bool public                           isEarlyBirdSaleActive = false;  
@@ -95,7 +99,7 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     baseURI = _initBaseURI;
     notRevealedURI = _initNotRevealedURI;
     deliveredURI = _initDeliveredURI;
-    tokenIdTracker._value = 1;
+    tokenIdTracker._value = 0;
   }
 
   
@@ -110,6 +114,14 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
 
   function currentTokenId() external view returns (uint256) {
     return tokenIdTracker.current();
+  }
+
+  function currentEarlyBridTokenId() external view returns (uint256) {
+    return tokenIdTracker_earlyBrid.current();
+  }
+
+  function currentAngleTokenId() external view returns (uint256) {
+    return tokenIdTracker_angle.current();
   }
 
   function walletOfOwner(address _owner) public view returns (uint256[] memory) {
@@ -169,7 +181,6 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     publicSaleCount += quantity;
     for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
@@ -187,7 +198,6 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     preSaleCount += quantity;
     for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        //invoke bridgeContract to set the first time buyers
         IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
@@ -203,11 +213,11 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     require(MerkleProof.verify(proof, earlybirdRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in earlybird list");
 
     earlyBridSaleCount += quantity;
+
     for (uint i = 0; i < quantity; i++ ) {
-        _safeMint(_msgSender(), getValidTokenId());
-        //invoke bridgeContract to set the first time buyers
-        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
-        tokenIdTracker.increment();
+        _safeMint(_msgSender(), tokenIdTracker_earlyBrid.current());
+        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker_earlyBrid.current(), _msgSender());
+        tokenIdTracker_earlyBrid.increment();
     }
   }
 
@@ -224,9 +234,9 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     angleSaleCount += quantity;
 
     for (uint i = 0; i < quantity; i++ ) {
-      _safeMint(_msgSender(), getValidTokenId());
-      IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
-      tokenIdTracker.increment();
+      _safeMint(_msgSender(), tokenIdTracker_angle.current());
+      IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker_angle.current(), _msgSender());
+      tokenIdTracker_angle.increment();
     }
   }
 
@@ -266,18 +276,26 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   }
 
   function setPublicSale(bool active) external onlyOwner {
+    require(PUBLI_SUPPLY > 0, "PUBLI_SUPPLY has not been set");
+    require(tokenIdTracker._value > 0, "preSale period begin tokenId has not been set");
     isPublicSaleActive = active;
   }
 
   function setPreSale(bool active) external onlyOwner {
+    require(PRE_SUPPLY > 0, "PRE_SUPPLY has not been set");
+    require(tokenIdTracker._value > 0, "preSale period begin tokenId has not been set");
     isPreSaleActive = active;
   }
 
   function setAngleSale(bool active) external onlyOwner {
+    require(ANGEL_SUPPLY > 0, "ANGEL_SUPPLY has not been set");
+    require(angleBeginId > 0, "angleBeginId has not been set");
     isAngelSaleActive = active;
   }
 
   function setEarlyBirdSale(bool active) external onlyOwner {
+    require(EARLYBIRD_SUPPLY > 0, "EARLYBIRD_SUPPLY has not been set");
+    require(earlyBridBeginId > 0, "earlyBridBeginId has not been set");
     isEarlyBirdSaleActive = active;
   }
 
@@ -317,6 +335,29 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     PUBLI_SUPPLY = amount;
   }
 
+  function setAngleBeginId(uint beginId) external onlyOwner {
+    require(beginId > 0, "tokenId must be greater than 0");
+    require(ANGEL_SUPPLY > 0, "ANGEL_SUPPLY has not been set");
+    angleBeginId = beginId;
+    tokenIdTracker_angle._value = angleBeginId;
+  }
+
+  function setEarlyBridBeginId(uint beginId) external onlyOwner {
+    require(beginId > 0, "tokenId must be greater than 0");
+    require(angleBeginId > 0, "angleBeginId has not been set");
+    require(EARLYBIRD_SUPPLY > 0, "EARLYBIRD_SUPPLY has not been set");
+    require(beginId > angleBeginId + ANGEL_SUPPLY - 1, "earlyBridBeginId must be greater than the last angle period tokenId");
+    earlyBridBeginId = beginId;
+    tokenIdTracker_earlyBrid._value = earlyBridBeginId;
+  }
+
+  function setPreBeginId(uint beginId) external onlyOwner {
+    require(beginId > 0, "tokenId must be greater than 0");
+    require(earlyBridBeginId > 0, "earlyBridBeginId has not been set");
+    require(beginId > earlyBridBeginId + EARLYBIRD_SUPPLY - 1, "preBeginId must be greater than the last earlyBrid period tokenId");
+    tokenIdTracker._value = beginId;
+  }
+
   function setAngleMintLimit(address account, uint limit) external onlyOwner {
     angleSaleMintLimit[account] = limit;
   }
@@ -329,15 +370,23 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   }
   //ser reserve tokenid
   function setReserve(uint256 tokenId, address account) external onlyOwner {
+    require(angleBeginId > 0, "angleBeginId has not been set");
+    require(earlyBridBeginId > 0, "earlyBridBeginId has not been set");
     require(!_exists(tokenId),"tokenId already exists");
+    require(tokenId < angleBeginId || tokenId > (angleBeginId + ANGEL_SUPPLY - 1), "tokenId must be outside the range of angel period IDs");
+    require(tokenId < earlyBridBeginId || tokenId > (earlyBridBeginId + EARLYBIRD_SUPPLY - 1), "tokenId must be outside the range of earlyBrid period IDs");
     reserveMap[tokenId] = account;
   }
 
   //batch set reserve tokenid
   function setReserveBatch(uint256[] memory tokenIds, address[] memory accounts) external onlyOwner {
+    require(angleBeginId > 0, "angleBeginId has not been set");
+    require(earlyBridBeginId > 0, "earlyBridBeginId has not been set");
     require(tokenIds.length == accounts.length, "The two arrays are not equal in length");
     for (uint i = 0; i < accounts.length; i++) {
       require(!_exists(tokenIds[i]),"tokenId already exists");
+      require(tokenIds[i] < angleBeginId || tokenIds[i] > (angleBeginId + ANGEL_SUPPLY - 1), "tokenId must be outside the range of angel period IDs");
+      require(tokenIds[i] < earlyBridBeginId || tokenIds[i] > (earlyBridBeginId + EARLYBIRD_SUPPLY - 1), "tokenId must be outside the range of earlyBrid period IDs");
       reserveMap[tokenIds[i]] = accounts[i];
     }
   }
