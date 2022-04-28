@@ -20,7 +20,6 @@ contract ChampionNFTBridge is BasicBridge, ChampionEIP712Upgradeable {
 
     /* --- EVENTS --- */
     event SetFirstBuy(address indexed operator, uint tokenId, address account);
-    event SetFirstBuy_Validator(address indexed operator, uint tokenId, address account, bytes32 transactionHash);
     event Delivery(address indexed operator, address sender, uint256 tokenId, uint256 value, bytes32 transactionHash);
     event SignedForTransferFromForeign(address indexed signer, bytes32 transactionHash);
 
