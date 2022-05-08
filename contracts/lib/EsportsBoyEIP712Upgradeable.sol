@@ -6,7 +6,7 @@ pragma abicoder v2;
 
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 
-contract ChampionEIP712Upgradeable is EIP712Upgradeable {
+contract EsportsBoyEIP712Upgradeable is EIP712Upgradeable {
 
     bytes public constant   MESSAGE = "TransferMedals(address signer,address sender,uint256 tokenId,uint256 value,bytes32 transactionHash)";
     string public constant  NAME = "ChampionNFT";
@@ -14,7 +14,7 @@ contract ChampionEIP712Upgradeable is EIP712Upgradeable {
 
     
 
-    function __ChampionEIP712_init() internal onlyInitializing {
+    function __EsportsBoyEIP712_init() internal onlyInitializing {
         __EIP712_init(NAME, VERSION);
     }
 

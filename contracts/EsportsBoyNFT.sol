@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "./interface/IChampionNFTBridge.sol";
 
 /*
 
@@ -34,13 +33,17 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   string private                        baseURI;
   string private                        notRevealedURI;           
   string private                        deliveredURI;             
-  bytes32 private                       angelRoot;                // the angel's MerkleRoot
-  bytes32 private                       earlybirdRoot;            
-  bytes32 private                       presaleRoot;              
+  bytes32 public                        angelRoot;                // the angel's MerkleRoot
+  bytes32 public                        earlybirdRoot_1;          // the earlybird's MerkleRoot #1
+  bytes32 public                        earlybirdRoot_2;          // the earlybird's MerkleRoot #2
+  bytes32 public                        earlybirdRoot_3;          // the earlybird's MerkleRoot #3
+  bytes32 public                        presaleRoot;              
   mapping(uint256 => address) private   reserveMap;               // for tokenid reservation
   uint256 public                        publicPrice;              //
   uint256 public                        ANGEL_SUPPLY;             //
-  uint256 public                        EARLYBIRD_SUPPLY;         //
+  uint256 public                        EARLYBIRD_SUPPLY_1;        //
+  uint256 public                        EARLYBIRD_SUPPLY_2;        //
+  uint256 public                        EARLYBIRD_SUPPLY_3;        //
   uint256 public                        PRE_SUPPLY;               //
   uint256 public                        PUBLI_SUPPLY;             //
   uint256 public                        angelSaleCount;           // keep track of angel mint number
@@ -48,10 +51,12 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   uint256 public                        preSaleCount;             
   uint256 public                        publicSaleCount;
   uint256 public                        angelBeginId;                 //Angel period tokenId begin
-  //uint256 public                        earlyBirdBeginId;             //earlyBird period tokenId begin
+  uint256 public                        earlyBirdBeginId_2;           //earlyBird period tokenId begin #2
+  uint256 public                        earlyBirdBeginId_3;           //earlyBird period tokenId begin #3
   Counters.Counter public               tokenIdTracker_angel;         //angel tokenId increment
-  //Counters.Counter public               tokenIdTracker_earlyBird;     //earlyBird tokenId increment
-  Counters.Counter public               tokenIdTracker;               //tokenId increment
+  Counters.Counter public               tokenIdTracker_earlyBird_2;   //earlyBird tokenId increment #2
+  Counters.Counter public               tokenIdTracker_earlyBird_3;   //earlyBird tokenId increment #3
+  Counters.Counter public               tokenIdTracker;               //perSale and publicSale and earlyBird_1 tokenId increment
   bool public                           isPublicSaleActive = false;     
   bool public                           isPreSaleActive = false;        
   bool public                           isEarlyBirdSaleActive = false;  
@@ -60,8 +65,12 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   mapping(uint256 => bool) public       deliveryMap;                    //tokenId => whether or not deliered
   mapping(address => uint256) public    angelMintLimit;                 //address => the upper limit of the mint quantity of Angel period
   mapping(address => uint256) public    angelMintCount;                 //address => the number of minted during the Angel period
-  mapping(address => uint256) public    earlyBirdMintLimit;             //address => the upper limit of the mint quantity of eraly birds period
-  mapping(address => uint256) public    earlyBirdMintCount;             //address => the number of minted during the eraly birds period
+  mapping(address => uint256) public    earlyBirdMintLimit_1;           //address => the upper limit of the mint quantity of eraly birds period #1
+  mapping(address => uint256) public    earlyBirdMintCount_1;           //address => the number of minted during the eraly birds period #1
+  mapping(address => uint256) public    earlyBirdMintLimit_2;           //address => the upper limit of the mint quantity of eraly birds period #2
+  mapping(address => uint256) public    earlyBirdMintCount_2;           //address => the number of minted during the eraly birds period #2
+  mapping(address => uint256) public    earlyBirdMintLimit_3;           //address => the upper limit of the mint quantity of eraly birds period #3
+  mapping(address => uint256) public    earlyBirdMintCount_3;           //address => the number of minted during the eraly birds period #3
 
   /* ----------- modifier ------------ */
 
@@ -118,9 +127,13 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     return tokenIdTracker.current();
   }
 
-  // function currentEarlyBridTokenId() external view returns (uint256) {
-  //   return tokenIdTracker_earlyBird.current();
-  // }
+  function currentEarlyBridTokenId_2() external view returns (uint256) {
+    return tokenIdTracker_earlyBird_2.current();
+  }
+
+  function currentEarlyBridTokenId_3() external view returns (uint256) {
+    return tokenIdTracker_earlyBird_3.current();
+  }
 
   function currentAngelTokenId() external view returns (uint256) {
     return tokenIdTracker_angel.current();
@@ -160,7 +173,11 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   /* ----------- internal function ------------ */
   function getValidTokenId() internal returns(uint) {
     while (true) {
-      if (reserveMap[tokenIdTracker.current()] == address(0) && !_exists(tokenIdTracker.current())) {
+      if (reserveMap[tokenIdTracker.current()] == address(0) && 
+          !_exists(tokenIdTracker.current()) &&
+          (tokenIdTracker.current() < earlyBirdBeginId_2 || tokenIdTracker.current() > earlyBirdBeginId_2 + EARLYBIRD_SUPPLY_2 - 1) && //to avoid reserved tokenIDs
+          (tokenIdTracker.current() < earlyBirdBeginId_3 || tokenIdTracker.current() > earlyBirdBeginId_3 + EARLYBIRD_SUPPLY_3 - 1))   //to avoid reserved tokenIDs
+      {
         return tokenIdTracker.current();
       }
       else
@@ -183,7 +200,6 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     publicSaleCount += quantity;
     for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
 
@@ -206,7 +222,6 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     preSaleCount += quantity;
     for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
     }
 
@@ -217,28 +232,57 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     }
   }
 
-  function earlyBirdMint(uint256 quantity, bytes32[] calldata proof) external
+  function earlyBirdMint_1(uint256 quantity, bytes32[] calldata proof) external
     whenNotPaused
     earlyBirdSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
-    require(quantity + earlyBirdSaleCount <= EARLYBIRD_SUPPLY,"Not enough EARLYBIRD_SUPPLY");
-    require(MerkleProof.verify(proof, earlybirdRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in earlybird list");
-    require(earlyBirdMintCount[_msgSender()] + quantity <= earlyBirdMintLimit[_msgSender()], "the number of caller mint exceeds the upper limit");
+    require(quantity + earlyBirdSaleCount <= EARLYBIRD_SUPPLY_1 + EARLYBIRD_SUPPLY_2 + EARLYBIRD_SUPPLY_3,"Not enough EARLYBIRD_SUPPLY");
+    require(MerkleProof.verify(proof, earlybirdRoot_1, keccak256(abi.encodePacked(_msgSender()))),"Address is not in earlybird list");
+    require(earlyBirdMintCount_1[_msgSender()] + quantity <= earlyBirdMintLimit_1[_msgSender()], "the number of caller mint exceeds the upper limit");
 
-    earlyBirdMintCount[_msgSender()] += quantity;
+    earlyBirdMintCount_1[_msgSender()] += quantity;
     earlyBirdSaleCount += quantity;
-
-    // for (uint i = 0; i < quantity; i++ ) {
-    //     _safeMint(_msgSender(), tokenIdTracker_earlyBird.current());
-    //     IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker_earlyBird.current(), _msgSender());
-    //     tokenIdTracker_earlyBird.increment();
-    // }
 
     for (uint i = 0; i < quantity; i++ ) {
         _safeMint(_msgSender(), getValidTokenId());
-        IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker.current(), _msgSender());
         tokenIdTracker.increment();
+    }
+  }
+
+  function earlyBirdMint_2(uint256 quantity, bytes32[] calldata proof) external
+    whenNotPaused
+    earlyBirdSaleActive {
+    require(_msgSender() == tx.origin, "No contracts allowed");
+    require(quantity > 0, "quantity must be greater than 0");
+    require(quantity + earlyBirdSaleCount <= EARLYBIRD_SUPPLY_1 + EARLYBIRD_SUPPLY_2 + EARLYBIRD_SUPPLY_3,"Not enough EARLYBIRD_SUPPLY");
+    require(MerkleProof.verify(proof, earlybirdRoot_2, keccak256(abi.encodePacked(_msgSender()))),"Address is not in earlybird list");
+    require(earlyBirdMintCount_2[_msgSender()] + quantity <= earlyBirdMintLimit_2[_msgSender()], "the number of caller mint exceeds the upper limit");
+
+    earlyBirdMintCount_2[_msgSender()] += quantity;
+    earlyBirdSaleCount += quantity;
+
+    for (uint i = 0; i < quantity; i++ ) {
+        _safeMint(_msgSender(), tokenIdTracker_earlyBird_2.current());
+        tokenIdTracker_earlyBird_2.increment();
+    }
+  }
+
+  function earlyBirdMint_3(uint256 quantity, bytes32[] calldata proof) external
+    whenNotPaused
+    earlyBirdSaleActive {
+    require(_msgSender() == tx.origin, "No contracts allowed");
+    require(quantity > 0, "quantity must be greater than 0");
+    require(quantity + earlyBirdSaleCount <= EARLYBIRD_SUPPLY_1 + EARLYBIRD_SUPPLY_2 + EARLYBIRD_SUPPLY_3,"Not enough EARLYBIRD_SUPPLY");
+    require(MerkleProof.verify(proof, earlybirdRoot_3, keccak256(abi.encodePacked(_msgSender()))),"Address is not in earlybird list");
+    require(earlyBirdMintCount_3[_msgSender()] + quantity <= earlyBirdMintLimit_3[_msgSender()], "the number of caller mint exceeds the upper limit");
+
+    earlyBirdMintCount_3[_msgSender()] += quantity;
+    earlyBirdSaleCount += quantity;
+
+    for (uint i = 0; i < quantity; i++ ) {
+        _safeMint(_msgSender(), tokenIdTracker_earlyBird_3.current());
+        tokenIdTracker_earlyBird_3.increment();
     }
   }
 
@@ -256,15 +300,17 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
 
     for (uint i = 0; i < quantity; i++ ) {
       _safeMint(_msgSender(), tokenIdTracker_angel.current());
-      IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenIdTracker_angel.current(), _msgSender());
       tokenIdTracker_angel.increment();
     }
   }
 
-  function mintReserve(uint tokenId) external whenNotPaused {
+  function mintReserve(uint tokenId) external whenNotPaused earlyBirdSaleActive {
     require(reserveMap[tokenId] == _msgSender(), "the tokenId does not belong to you");
+    require(1 + earlyBirdSaleCount <= EARLYBIRD_SUPPLY_1 + EARLYBIRD_SUPPLY_2 + EARLYBIRD_SUPPLY_3,"Not enough EARLYBIRD_SUPPLY");
+
+    earlyBirdSaleCount += 1;
+
     _safeMint(_msgSender(), tokenId);
-    IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenId, _msgSender());
   }
 
 
@@ -311,11 +357,12 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
   }
 
   function setEarlyBirdSale(bool active) external onlyOwner {
-    //require(EARLYBIRD_SUPPLY > 0, "EARLYBIRD_SUPPLY has not been set");
-    //require(earlyBirdBeginId > 0, "earlyBirdBeginId has not been set");
-    require(EARLYBIRD_SUPPLY > 0, "EARLYBIRD_SUPPLY has not been set");
+    require(EARLYBIRD_SUPPLY_1 > 0, "EARLYBIRD_SUPPLY_1 has not been set");
+    require(EARLYBIRD_SUPPLY_2 > 0, "EARLYBIRD_SUPPLY_2 has not been set");
+    require(EARLYBIRD_SUPPLY_3 > 0, "EARLYBIRD_SUPPLY_3 has not been set");
+    require(earlyBirdBeginId_2 > 0, "earlyBirdBeginId_2 has not been set");
+    require(earlyBirdBeginId_3 > 0, "earlyBirdBeginId_3 has not been set");
     require(tokenIdTracker._value > 0, "the start tokenId has not been set");
-    require(publicPrice > 0, "public price has not been set");
     isEarlyBirdSaleActive = active;
   }
 
@@ -337,8 +384,12 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     presaleRoot = _presaleRoot;
   }
 
-  function setEarlyBirdRoot(bytes32 _earlybirdRoot) external onlyOwner {
-    earlybirdRoot = _earlybirdRoot;
+  function setEarlyBirdRoot_1(bytes32 _earlybirdRoot) external onlyOwner {
+    earlybirdRoot_1 = _earlybirdRoot;
+  }
+
+  function setEarlyBirdRoot_2(bytes32 _earlybirdRoot) external onlyOwner {
+    earlybirdRoot_2 = _earlybirdRoot;
   }
 
   function setPublicPrice(uint256 amount) external onlyOwner {
@@ -351,9 +402,19 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     ANGEL_SUPPLY = amount;
   }
 
-  function setEarlyBirdSupply(uint256 amount) external onlyOwner {
+  function setEarlyBirdSupply_1(uint256 amount) external onlyOwner {
     require(amount > 0, "supply must be greater than 0");
-    EARLYBIRD_SUPPLY = amount;
+    EARLYBIRD_SUPPLY_1 = amount;
+  }
+
+  function setEarlyBirdSupply_2(uint256 amount) external onlyOwner {
+    require(amount > 0, "supply must be greater than 0");
+    EARLYBIRD_SUPPLY_2 = amount;
+  }
+
+  function setEarlyBirdSupply_3(uint256 amount) external onlyOwner {
+    require(amount > 0, "supply must be greater than 0");
+    EARLYBIRD_SUPPLY_3 = amount;
   }
 
   function setPreSupply(uint256 amount) external onlyOwner {
@@ -373,14 +434,23 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     tokenIdTracker_angel._value = angelBeginId;
   }
 
-  // function setEarlyBridBeginId(uint beginId) external onlyOwner {
-  //   require(beginId > 0, "tokenId must be greater than 0");
-  //   require(EARLYBIRD_SUPPLY > 0, "EARLYBIRD_SUPPLY has not been set");
-  //   require(angelBeginId > 0, "angelBeginId has not been set");
-  //   require(beginId > angelBeginId + ANGEL_SUPPLY - 1, "earlyBirdBeginId must be greater than the last angel period tokenId");
-  //   earlyBirdBeginId = beginId;
-  //   tokenIdTracker_earlyBird._value = earlyBirdBeginId;
-  // }
+  function setEarlyBridBeginId_2(uint beginId) external onlyOwner {
+    require(beginId > 0, "tokenId must be greater than 0");
+    require(EARLYBIRD_SUPPLY_2 > 0, "EARLYBIRD_SUPPLY_2 has not been set");
+    require(angelBeginId > 0, "angelBeginId has not been set");
+    require(beginId > angelBeginId + ANGEL_SUPPLY - 1, "earlyBirdBeginId_2 must be greater than the last angel period tokenId");
+    earlyBirdBeginId_2 = beginId;
+    tokenIdTracker_earlyBird_2._value = earlyBirdBeginId_2;
+  }
+
+  function setEarlyBridBeginId_3(uint beginId) external onlyOwner {
+    require(beginId > 0, "tokenId must be greater than 0");
+    require(EARLYBIRD_SUPPLY_3 > 0, "EARLYBIRD_SUPPLY_3 has not been set");
+    require(earlyBirdBeginId_2 > 0, "earlyBirdBeginId_2 has not been set");
+    require(beginId > earlyBirdBeginId_2, "earlyBirdBeginId_3 must be greater than earlyBirdBeginId_2");
+    earlyBirdBeginId_3 = beginId;
+    tokenIdTracker_earlyBird_3._value = earlyBirdBeginId_3;
+  }
 
   function setBeginId(uint beginId) external onlyOwner {
     require(beginId > 0, "tokenId must be greater than 0");
@@ -400,36 +470,54 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     }
   }
 
-  function setEarlyBirdMintLimit(address account, uint limit) external onlyOwner {
-    earlyBirdMintLimit[account] = limit;
+  function setEarlyBirdMintLimit_1(address account, uint limit) external onlyOwner {
+    earlyBirdMintLimit_1[account] = limit;
   }
 
-  function setEarlyBirdMintLimitBatch(address[] memory accounts, uint[] memory limits) external onlyOwner {
+  function setEarlyBirdMintLimit_2(address account, uint limit) external onlyOwner {
+    earlyBirdMintLimit_2[account] = limit;
+  }
+
+  function setEarlyBirdMintLimit_3(address account, uint limit) external onlyOwner {
+    earlyBirdMintLimit_3[account] = limit;
+  }
+
+  function setEarlyBirdMintLimitBatch_1(address[] memory accounts, uint[] memory limits) external onlyOwner {
     require(limits.length == accounts.length, "The two arrays are not equal in length");
     for (uint i = 0; i < accounts.length; i++) {
-      earlyBirdMintLimit[accounts[i]] = limits[i];
+      earlyBirdMintLimit_1[accounts[i]] = limits[i];
+    }
+  }
+
+  function setEarlyBirdMintLimitBatch_2(address[] memory accounts, uint[] memory limits) external onlyOwner {
+    require(limits.length == accounts.length, "The two arrays are not equal in length");
+    for (uint i = 0; i < accounts.length; i++) {
+      earlyBirdMintLimit_2[accounts[i]] = limits[i];
+    }
+  }
+
+  function setEarlyBirdMintLimitBatch_3(address[] memory accounts, uint[] memory limits) external onlyOwner {
+    require(limits.length == accounts.length, "The two arrays are not equal in length");
+    for (uint i = 0; i < accounts.length; i++) {
+      earlyBirdMintLimit_3[accounts[i]] = limits[i];
     }
   }
 
   //ser reserve tokenid
   function setReserve(uint256 tokenId, address account) external onlyOwner {
     require(angelBeginId > 0, "angelBeginId has not been set");
-    //require(earlyBirdBeginId > 0, "earlyBirdBeginId has not been set");
     require(!_exists(tokenId),"tokenId already exists");
     require(tokenId < angelBeginId || tokenId > (angelBeginId + ANGEL_SUPPLY - 1), "tokenId must be outside the range of angel period IDs");
-    //require(tokenId < earlyBirdBeginId || tokenId > (earlyBirdBeginId + EARLYBIRD_SUPPLY - 1), "tokenId must be outside the range of earlyBird period IDs");
     reserveMap[tokenId] = account;
   }
 
   //batch set reserve tokenid
   function setReserveBatch(uint256[] memory tokenIds, address[] memory accounts) external onlyOwner {
     require(angelBeginId > 0, "angelBeginId has not been set");
-    //require(earlyBirdBeginId > 0, "earlyBirdBeginId has not been set");
     require(tokenIds.length == accounts.length, "The two arrays are not equal in length");
     for (uint i = 0; i < accounts.length; i++) {
       require(!_exists(tokenIds[i]),"tokenId already exists");
       require(tokenIds[i] < angelBeginId || tokenIds[i] > (angelBeginId + ANGEL_SUPPLY - 1), "tokenId must be outside the range of angel period IDs");
-      //require(tokenIds[i] < earlyBirdBeginId || tokenIds[i] > (earlyBirdBeginId + EARLYBIRD_SUPPLY - 1), "tokenId must be outside the range of earlyBird period IDs");
       reserveMap[tokenIds[i]] = accounts[i];
     }
   }
@@ -440,17 +528,17 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
 
   function mintAdmin(uint256 tokenId, address to) external onlyOwner{
     require(angelBeginId > 0, "angelBeginId has not been set");
-    //require(earlyBirdBeginId > 0, "earlyBirdBeginId has not been set");
+    require(earlyBirdBeginId_2 > 0, "earlyBirdBeginId_2 has not been set");
+    require(earlyBirdBeginId_3 > 0, "earlyBirdBeginId_3 has not been set");
     require(tokenId < angelBeginId || tokenId > (angelBeginId + ANGEL_SUPPLY - 1), "tokenId must be outside the range of angel period IDs");
-    //require(tokenId < earlyBirdBeginId || tokenId > (earlyBirdBeginId + EARLYBIRD_SUPPLY - 1), "tokenId must be outside the range of earlyBird period IDs");
+    require(tokenId < earlyBirdBeginId_2 || tokenId > (earlyBirdBeginId_2 + EARLYBIRD_SUPPLY_2 - 1), "tokenId must be outside the range of earlyBird period #2 IDs");
+    require(tokenId < earlyBirdBeginId_3 || tokenId > (earlyBirdBeginId_3 + EARLYBIRD_SUPPLY_3 - 1), "tokenId must be outside the range of earlyBird period #3 IDs");
     require(reserveMap[tokenId] == address(0), "the tokenId has been reserved");
     _safeMint(to, tokenId);
-    IChampionNFTBridge(bridgeContractAddress).setFirstBuy(tokenId, to);
   }
 
   function withdraw() external onlyOwner {
     require(address(this).balance > 0, "no eth balance");
-    //bool success = payable(msg.sender).send(address(this).balance);
     (bool sent, bytes memory data) = payable(msg.sender).call{value: address(this).balance}("");
     require(sent, "Payment did not go through!");
   }
