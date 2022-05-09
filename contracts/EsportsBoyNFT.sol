@@ -127,11 +127,11 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     return tokenIdTracker.current();
   }
 
-  function currentEarlyBridTokenId_2() external view returns (uint256) {
+  function currentEarlyBirdTokenId_2() external view returns (uint256) {
     return tokenIdTracker_earlyBird_2.current();
   }
 
-  function currentEarlyBridTokenId_3() external view returns (uint256) {
+  function currentEarlyBirdTokenId_3() external view returns (uint256) {
     return tokenIdTracker_earlyBird_3.current();
   }
 
@@ -392,6 +392,10 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     earlybirdRoot_2 = _earlybirdRoot;
   }
 
+  function setEarlyBirdRoot_3(bytes32 _earlybirdRoot) external onlyOwner {
+    earlybirdRoot_3 = _earlybirdRoot;
+  }
+
   function setPublicPrice(uint256 amount) external onlyOwner {
     require(amount > 0, "price must be greater than 0");
     publicPrice = amount;
@@ -434,7 +438,7 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     tokenIdTracker_angel._value = angelBeginId;
   }
 
-  function setEarlyBridBeginId_2(uint beginId) external onlyOwner {
+  function setEarlyBirdBeginId_2(uint beginId) external onlyOwner {
     require(beginId > 0, "tokenId must be greater than 0");
     require(EARLYBIRD_SUPPLY_2 > 0, "EARLYBIRD_SUPPLY_2 has not been set");
     require(angelBeginId > 0, "angelBeginId has not been set");
@@ -443,11 +447,11 @@ contract EsportsBoyNFT is ERC721Enumerable, Ownable, Pausable {
     tokenIdTracker_earlyBird_2._value = earlyBirdBeginId_2;
   }
 
-  function setEarlyBridBeginId_3(uint beginId) external onlyOwner {
+  function setEarlyBirdBeginId_3(uint beginId) external onlyOwner {
     require(beginId > 0, "tokenId must be greater than 0");
     require(EARLYBIRD_SUPPLY_3 > 0, "EARLYBIRD_SUPPLY_3 has not been set");
     require(earlyBirdBeginId_2 > 0, "earlyBirdBeginId_2 has not been set");
-    require(beginId > earlyBirdBeginId_2, "earlyBirdBeginId_3 must be greater than earlyBirdBeginId_2");
+    require(beginId > earlyBirdBeginId_2 + EARLYBIRD_SUPPLY_2 - 1, "earlyBirdBeginId_3 must be greater than the last earlyBird period #2 tokenId");
     earlyBirdBeginId_3 = beginId;
     tokenIdTracker_earlyBird_3._value = earlyBirdBeginId_3;
   }

@@ -3,18 +3,18 @@ const truffleAssert = require('truffle-assertions');
 const { ethers } = require('ethers');
 const Web3 = require('web3');
 // Load compiled artifacts
-const ChampionCollaborator = artifacts.require("ChampionCollaborator");
+const EsportsBoyCollaborator = artifacts.require("EsportsBoyCollaborator");
 const web3 = new Web3(new Web3.providers.HttpProvider('HTTP://127.0.0.1:7545'));
 // Start test block
-contract('ChampionCollaborator Test', function (accounts) {
+contract('EsportsBoyCollaborator Test', function (accounts) {
     
-    describe('check for ChampionCollaborator',() => {
+    describe('check for EsportsBoyCollaborator',() => {
         let collaborator = null;
         const owner = accounts[0];
         const address_0 = "0x0000000000000000000000000000000000000000";
         
         beforeEach(async function () {
-            collaborator = await ChampionCollaborator.new();
+            collaborator = await EsportsBoyCollaborator.new();
             await collaborator.__initialize();
         });
 
@@ -33,13 +33,11 @@ contract('ChampionCollaborator Test', function (accounts) {
             await collaborator.addCollaborator(accounts[1], 6000);
             assert.equal((await collaborator.totalPercentage()).toNumber(), 10000);
 
-            let info1 = await collaborator.getCollaborator(owner);
-            let info2 = await collaborator.getCollaborator(accounts[1]);
-            assert.equal(info1.percentage, 4000);
-            assert.equal(info1.active, true);
+            let percentage1 = await collaborator.getCollaborator(owner);
+            let percentage2 = await collaborator.getCollaborator(accounts[1]);
+            assert.equal(percentage1.toNumber(), 4000);
 
-            assert.equal(info2.percentage, 6000);
-            assert.equal(info2.active, true);
+            assert.equal(percentage2.toNumber(), 6000);
         });
 
         it("check for setCollaborator", async () => {
@@ -56,11 +54,9 @@ contract('ChampionCollaborator Test', function (accounts) {
 
             let info1 = await collaborator.getCollaborator(owner);
             let info2 = await collaborator.getCollaborator(accounts[1]);
-            assert.equal(info1.percentage, 4000);
-            assert.equal(info1.active, true);
+            assert.equal(info1.toNumber(), 4000);
 
-            assert.equal(info2.percentage, 5000);
-            assert.equal(info2.active, true);
+            assert.equal(info2.toNumber(), 5000);
         });
 
         it("check for delCollaborator", async () => {
@@ -76,11 +72,9 @@ contract('ChampionCollaborator Test', function (accounts) {
 
             let info1 = await collaborator.getCollaborator(owner);
             let info2 = await collaborator.getCollaborator(accounts[1]);
-            assert.equal(info1.percentage, 4000);
-            assert.equal(info1.active, true);
+            assert.equal(info1.toNumber(), 4000);
 
-            assert.equal(info2.percentage, 0);
-            assert.equal(info2.active, false);
+            assert.equal(info2.toNumber(), 0);
         });
 
         it("check for withdraw", async () => {
