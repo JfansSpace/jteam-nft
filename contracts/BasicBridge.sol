@@ -59,7 +59,7 @@ contract BasicBridge is OwnableUpgradeable, PausableUpgradeable{
     }
 
     function setRequiredSignatures(uint256 _requiredSignatures) external onlyOwner {
-        require(validatorCount >= _requiredSignatures, "New requiredSignatures should be greater than num of validators");
+        require(validatorCount >= _requiredSignatures, "New requiredSignatures should be less than or equal to num of validators");
         require(_requiredSignatures != 0, "New requiredSignatures should be > than 0");
         requiredSignatures = _requiredSignatures;
         emit RequiredSignaturesChanged(_requiredSignatures);

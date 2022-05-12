@@ -9,6 +9,7 @@ Add, set, remove, get collaborators who are eliable to receive the royalties
 */
 contract EsportsBoyCollaborator is OwnableUpgradeable {
 
+    event Withdraw (bool sent, address collaborator, uint amount);
 
     address[] private                               allCollaborators;
     mapping(address => uint) private                CollaboratorMap;  // Collaborator address => Collaborator percentage
@@ -80,8 +81,9 @@ contract EsportsBoyCollaborator is OwnableUpgradeable {
         for (uint i = 0; i < allCollaborators.length; i++) {
             if (allCollaborators[i] != address(0)) {
                 uint percentage = CollaboratorMap[allCollaborators[i]];
-                (bool sent, bytes memory data) = payable(allCollaborators[i]).call{value: (balance * percentage) / 10000}("");
-                require(sent, "Failed to send Ether");
+                uint amount = (balance * percentage) / 10000;
+                (bool sent, bytes memory data) = payable(allCollaborators[i]).call{value: amount}("");
+                emit Withdraw(sent, allCollaborators[i], amount);
             }
         }
     }
