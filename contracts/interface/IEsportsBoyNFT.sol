@@ -2,9 +2,9 @@
 
 
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import "erc721a/contracts/extensions/IERC721AQueryable.sol";
 
-interface IEsportsBoyNFT is IERC721Enumerable{
+interface IEsportsBoyNFT is IERC721AQueryable{
 
     
     function setDelivered(uint tokenId, bool pickup) external;
