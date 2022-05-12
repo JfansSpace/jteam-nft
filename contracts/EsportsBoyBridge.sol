@@ -9,9 +9,9 @@ import "./lib/EsportsBoyEIP712Upgradeable.sol";
 
 /*
 
-冠軍俱樂部NFT Bridge 合约 部署在 以太坊， 负责接受验证者调用，设置冠軍俱樂部NFT 的提货状态
-核心方法：
-delivery： 由验证者调用，把冠軍俱樂部NFT申请提货并缴费勋章的数据签名打包，发送给Bridge 合约，验证通过之后，设置冠軍俱樂部NFT 的提货状态
+Esports Boy NFT Bridge Contract will be deployed on the home chain, used to receive the redemption notifications, and set the delivery status.
+Core Method：
+delivery： invoked by the validator, sign the Esports Boy NFT delivery data, and send to the bridge contract. After validation, set the delivery status.
 
 */
 
