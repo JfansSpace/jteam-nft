@@ -19,6 +19,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.5.1",
     "@truffle/hdwallet-provider": "^1.4.1",
     "dotenv": "^16.0.0",
+    "erc721a": "^3.3.0",
     "ethers": "^5.4.6",
     "keccak256": "^1.0.6",
     "merkletreejs": "^0.2.31",
