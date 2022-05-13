@@ -6,6 +6,8 @@ const keccak256 = require('keccak256')
 // Load compiled artifacts
 const EsportsBoyNFTA = artifacts.require("EsportsBoyNFTA");
 const EsportsBoyBridge = artifacts.require("EsportsBoyBridge");
+const TUSDT = artifacts.require("TUSDT");
+
 const { sign } = require("./utils/mint");
 
 // Start test block
@@ -13,6 +15,7 @@ contract('EsportsBoyNFTA Test', function (accounts) {
     
     describe('check for EsportsBoyNFTA',() => {
         let nft = null;
+        let usdt = null;
         let bridge = null;
         let angelAddresses = [accounts[0],accounts[1],accounts[2]];
         let earlybirdAddresses = [accounts[3],accounts[4],accounts[5]];
@@ -34,10 +37,12 @@ contract('EsportsBoyNFTA Test', function (accounts) {
         const address_0 = "0x0000000000000000000000000000000000000000";
         
         beforeEach(async function () {
+            usdt = await TUSDT.new("TEST USDT","TUSD");
             nft = await EsportsBoyNFTA.new("Champion-nft", "CNFT", _initBaseURI, _initNotRevealedUri, _pickupUri);
             bridge = await EsportsBoyBridge.new();
             await bridge.__initialize(nft.address, 1000);
             await nft.setBridge(bridge.address);
+            await nft.setUSDT(usdt.address);
         });
 
         it("check for init", async () => {
@@ -214,42 +219,51 @@ contract('EsportsBoyNFTA Test', function (accounts) {
 
             let merkleProof_6 = presaleRoot.getHexProof("0x" + keccak256(accounts[6]).toString('hex'));
 
-            await truffleAssert.reverts(nft.presaleMint(1, merkleProof_6, {from:accounts[6]}), "PreSale not active");
+            await truffleAssert.reverts(nft.presaleMint(1, merkleProof_6, 0,{from:accounts[6]}), "PreSale not active");
             await truffleAssert.reverts(nft.setPreSale(true), "PRE_SUPPLY has not been set");
             await nft.setPreSupply(300)
             await truffleAssert.reverts(nft.setPreSale(true), "public price has not been set");
-            await nft.setPublicPrice(ethers.utils.parseEther("0.001"))
+            await nft.setPublicPrice(ethers.utils.parseEther("2000")) //2000 U
             await nft.setPreSale(true)
 
-            await truffleAssert.reverts(nft.presaleMint(301, merkleProof_6, {from:accounts[7]}), "Not enough PRE_SUPPLY");
-            await truffleAssert.reverts(nft.presaleMint(1, merkleProof_6, {from:accounts[7]}), "Not enough ETH");
+            await truffleAssert.reverts(nft.presaleMint(301, merkleProof_6, 0, {from:accounts[7]}), "Not enough PRE_SUPPLY");
+            await truffleAssert.reverts(nft.presaleMint(1, merkleProof_6, 0, {from:accounts[7]}), "Address is not in presale list");
+
+            await truffleAssert.reverts(nft.presaleMint(1, merkleProof_6, 0,{from:accounts[6]}), "Not enough USDT");
             let price = await nft.publicPrice();
-            await truffleAssert.reverts(nft.presaleMint(1, merkleProof_6, {from:accounts[7], value:price}), "Address is not in presale list");
+            await truffleAssert.reverts(nft.presaleMint(1, merkleProof_6, price, {from:accounts[6]}), "balanceOf usdt is not enough");
 
             assert.equal((await nft.preSaleCount()).toNumber(), 0);
             assert.equal((await nft.currentTokenId()).toNumber(), 1);
             await nft.mintAdmin(owner, 1); //#1
             await nft.mintAdmin(owner, 2); //#2 #3
             
-            await nft.presaleMint(2, merkleProof_6, {from:accounts[6], value:price * 2});
+
+            let pay_usdt = ethers.utils.parseUnits(price.toString(),'wei').mul(2);
+            await usdt.transfer(accounts[6], pay_usdt);
+            await truffleAssert.reverts(nft.presaleMint(2, merkleProof_6, pay_usdt, {from:accounts[6]}), "ERC20: insufficient allowance");
+            await usdt.approve(nft.address, pay_usdt, {from:accounts[6]});
+            await nft.presaleMint(2, merkleProof_6, pay_usdt, {from:accounts[6]});
             
             assert.equal((await nft.preSaleCount()).toNumber(), 2);
             let tokenIds = await nft.tokensOfOwner(accounts[6]);
             assert.equal(tokenIds.length, 2);
             assert.equal(tokenIds[0], 4);
             assert.equal(tokenIds[1], 5);
+
+            assert.equal((await usdt.balanceOf(nft.address)).toString(), ethers.utils.parseUnits(price.toString(),'wei').mul(2).toString());
         });
 
         it("check for publicMint", async () => {
 
-            await truffleAssert.reverts(nft.publicMint(1), "PublicSale not active");
+            await truffleAssert.reverts(nft.publicMint(1,0), "PublicSale not active");
             await truffleAssert.reverts(nft.setPublicSale(true), "PUBLI_SUPPLY has not been set");
             await nft.setPublicSupply(100)
             await truffleAssert.reverts(nft.setPublicSale(true), "public price has not been set");
-            await nft.setPublicPrice(ethers.utils.parseEther("0.001"))
+            await nft.setPublicPrice(ethers.utils.parseEther("2000")) //2000 U
             await nft.setPublicSale(true)
-            await truffleAssert.reverts(nft.publicMint(101), "Not enough PUBLI_SUPPLY");
-            await truffleAssert.reverts(nft.publicMint(1), "Not enough ETH");
+            await truffleAssert.reverts(nft.publicMint(101, 0), "Not enough PUBLI_SUPPLY");
+            await truffleAssert.reverts(nft.publicMint(1, 0), "Not enough USDT");
 
             let price = await nft.publicPrice();
 
@@ -258,8 +272,12 @@ contract('EsportsBoyNFTA Test', function (accounts) {
             
             await nft.mintAdmin(owner, 1); //#1
             await nft.mintAdmin(owner, 2); //#2 #3
+            
 
-            await nft.publicMint(2,{value:price * 2});
+            let pay_usdt = ethers.utils.parseUnits(price.toString(),'wei').mul(2);
+            await truffleAssert.reverts(nft.publicMint(2, pay_usdt), "ERC20: insufficient allowance");
+            await usdt.approve(nft.address, pay_usdt);
+            await nft.publicMint(2, pay_usdt);
             
             assert.equal((await nft.publicSaleCount()).toNumber(), 2);
             let tokenIds = await nft.tokensOfOwner(owner);
@@ -269,6 +287,27 @@ contract('EsportsBoyNFTA Test', function (accounts) {
             assert.equal(tokenIds[2], 3);
             assert.equal(tokenIds[3], 4);
             assert.equal(tokenIds[4], 5);
+        });
+
+        it("check for withdrawUSDT", async () => {
+            let owner_balance = await usdt.balanceOf(owner);
+
+            await nft.setPublicSupply(100)
+            await nft.setPublicPrice(ethers.utils.parseEther("2000")) //2000 U
+            await nft.setPublicSale(true)
+
+            let price = await nft.publicPrice();
+            let pay_usdt = ethers.utils.parseUnits(price.toString(),'wei').mul(2);
+            await usdt.approve(nft.address, pay_usdt);
+
+            assert.equal((await usdt.balanceOf(nft.address)).toString(), "0");
+            await nft.publicMint(2, pay_usdt);
+            assert.equal((await usdt.balanceOf(nft.address)).toString(), pay_usdt.toString());
+            
+            await nft.withdrawUSDT();
+
+            assert.equal((await usdt.balanceOf(nft.address)).toString(), "0");
+            assert.equal((await usdt.balanceOf(owner)).toString(), owner_balance.toString());
         });
     });
 
