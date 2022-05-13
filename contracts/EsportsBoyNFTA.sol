@@ -414,6 +414,6 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
   function withdrawUSDT() external onlyOwner {
     uint balance = IERC20(usdt).balanceOf(address(this));
     require(balance > 0, "no usdt balance");
-    IERC20(usdt).transferFrom(address(this), _msgSender(), balance);
+    IERC20(usdt).transfer(_msgSender(), balance);
   }
 }
