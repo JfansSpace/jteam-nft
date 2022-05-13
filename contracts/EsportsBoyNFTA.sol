@@ -53,7 +53,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
   bool public                           isEarlyBirdSaleActive = false;  
   bool public                           isAngelSaleActive = false;      //?angel already finished
   bool public                           isRevealed = false;
-  address                               usdt;
+  address public                        usdt;
   mapping(uint256 => bool) public       deliveryMap;                    //tokenId => whether or not deliered
   mapping(address => uint256) public    angelMintLimit;                 //address => the upper limit of the mint quantity of Angel period
   mapping(address => uint256) public    angelMintCount;                 //address => the number of minted during the Angel period
