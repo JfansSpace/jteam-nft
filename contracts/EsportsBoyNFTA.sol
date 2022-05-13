@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /*
 
@@ -36,7 +37,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
   bytes32 public                        earlybirdRoot_2;          // the earlybird's MerkleRoot #2
   bytes32 public                        earlybirdRoot_3;          // the earlybird's MerkleRoot #3
   bytes32 public                        presaleRoot;              
-  uint256 public                        publicPrice;              //
+  uint256 public                        publicPrice;              // usdt price
   uint256 public                        ANGEL_SUPPLY;             //
   uint256 public                        EARLYBIRD_SUPPLY_1;        //
   uint256 public                        EARLYBIRD_SUPPLY_2;        //
@@ -45,13 +46,14 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
   uint256 public                        PUBLI_SUPPLY;             //
   uint256 public                        angelSaleCount;           // keep track of angel mint number
   uint256 public                        earlyBirdSaleCount;       
-  uint256 public                        preSaleCount;             
+  uint256 public                        preSaleCount;
   uint256 public                        publicSaleCount;
   bool public                           isPublicSaleActive = false;     
   bool public                           isPreSaleActive = false;        
   bool public                           isEarlyBirdSaleActive = false;  
   bool public                           isAngelSaleActive = false;      //?angel already finished
-  bool public                           isRevealed = false;             
+  bool public                           isRevealed = false;
+  address                               usdt;
   mapping(uint256 => bool) public       deliveryMap;                    //tokenId => whether or not deliered
   mapping(address => uint256) public    angelMintLimit;                 //address => the upper limit of the mint quantity of Angel period
   mapping(address => uint256) public    angelMintCount;                 //address => the number of minted during the Angel period
@@ -143,49 +145,37 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
 
   /* ----------- external function ------------ */
 
-  function publicMint(uint256 quantity) external payable 
+  function publicMint(uint256 quantity, uint256 amount) external 
     whenNotPaused
     publicSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
     require(quantity + publicSaleCount <= PUBLI_SUPPLY,"Not enough PUBLI_SUPPLY");
-    require(msg.value >= publicPrice * quantity, "Not enough ETH");
+    require(amount >= publicPrice * quantity, "Not enough USDT");
+    require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
+
+
+    IERC20(usdt).transferFrom(_msgSender(), address(this), amount);
 
     publicSaleCount += quantity;
     _safeMint(_msgSender(), quantity);
-    // for (uint i = 0; i < quantity; i++ ) {
-    //     _safeMint(_msgSender(), getValidTokenId());
-    //     tokenIdTracker.increment();
-    // }
-
-    //return back
-    uint exceed_fee = msg.value - (publicPrice * quantity);
-    if (exceed_fee > 0) {
-      (bool sent, bytes memory data) = payable(msg.sender).call{value: exceed_fee}("");
-    }
   }
 
-  function presaleMint(uint256 quantity, bytes32[] calldata proof) external payable 
+  function presaleMint(uint256 quantity, bytes32[] calldata proof, uint256 amount) external 
     whenNotPaused 
     preSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
     require(quantity + preSaleCount <= PRE_SUPPLY,"Not enough PRE_SUPPLY");
-    require(msg.value >= publicPrice * quantity, "Not enough ETH");
     require(MerkleProof.verify(proof, presaleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in presale list");
+    require(amount >= publicPrice * quantity, "Not enough USDT");
+    require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
+
+
+    IERC20(usdt).transferFrom(_msgSender(), address(this), amount);
 
     preSaleCount += quantity;
     _safeMint(_msgSender(), quantity);
-    // for (uint i = 0; i < quantity; i++ ) {
-    //     _safeMint(_msgSender(), getValidTokenId());
-    //     tokenIdTracker.increment();
-    // }
-
-    //return back
-    uint exceed_fee = msg.value - (publicPrice * quantity);
-    if (exceed_fee > 0) {
-      (bool sent, bytes memory data) = payable(msg.sender).call{value: exceed_fee}("");
-    }
   }
 
   function earlyBirdMint_1(uint256 quantity, bytes32[] calldata proof) external
@@ -262,6 +252,10 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
 
   function unpause() public onlyOwner {
     _unpause();
+  }
+
+  function setUSDT(address _usdt) public onlyOwner {
+    usdt = _usdt;
   }
 
   function setNotRevealedURI(string memory _notRevealedURI) external onlyOwner {
@@ -411,9 +405,15 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     _safeMint(to, quantity);
   }
 
-  function withdraw() external onlyOwner {
-    require(address(this).balance > 0, "no eth balance");
-    (bool sent, bytes memory data) = payable(msg.sender).call{value: address(this).balance}("");
-    require(sent, "Payment did not go through!");
+  // function withdraw() external onlyOwner {
+  //   require(address(this).balance > 0, "no eth balance");
+  //   (bool sent, bytes memory data) = payable(msg.sender).call{value: address(this).balance}("");
+  //   require(sent, "Payment did not go through!");
+  // }
+
+  function withdrawUSDT() external onlyOwner {
+    uint balance = IERC20(usdt).balanceOf(address(this));
+    require(balance > 0, "no usdt balance");
+    IERC20(usdt).transferFrom(address(this), _msgSender(), balance);
   }
 }
