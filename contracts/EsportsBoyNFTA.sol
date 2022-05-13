@@ -151,7 +151,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
     require(quantity + publicSaleCount <= PUBLI_SUPPLY,"Not enough PUBLI_SUPPLY");
-    require(amount >= publicPrice * quantity, "Not enough USDT");
+    require(amount == publicPrice * quantity, "amount is wrong");
     require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
 
 
@@ -168,7 +168,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     require(quantity > 0, "quantity must be greater than 0");
     require(quantity + preSaleCount <= PRE_SUPPLY,"Not enough PRE_SUPPLY");
     require(MerkleProof.verify(proof, presaleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in presale list");
-    require(amount >= publicPrice * quantity, "Not enough USDT");
+    require(amount == publicPrice * quantity, "amount is wrong");
     require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
 
 
