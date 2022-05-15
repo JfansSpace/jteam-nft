@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interface/IERC20_USDT.sol";
 
 /*
 
@@ -28,6 +28,7 @@ angelMint
 contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
   using Strings for uint256;
 
+
   address private                       bridgeContractAddress;  // contract used to set the NFT delivery status
   string private                        baseURI;
   string private                        notRevealedURI;           
@@ -36,10 +37,10 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
   bytes32 public                        earlybirdRoot;          // the earlybird's MerkleRoot #1
   bytes32 public                        presaleRoot;              
   uint256 public                        publicPrice;              // usdt price
-  uint256 public                        ANGEL_SUPPLY;             //
-  uint256 public                        EARLYBIRD_SUPPLY;         //
-  uint256 public                        PRE_SUPPLY;               //
-  uint256 public                        PUBLI_SUPPLY;             //
+  uint256 public constant               ANGEL_SUPPLY = 300;       // 
+  uint256 public constant               EARLYBIRD_SUPPLY = 300;   //
+  uint256 public constant               PRE_SUPPLY = 300;         //
+  uint256 public constant               PUBLI_SUPPLY = 100;       //
   uint256 public                        angelSaleCount;           // keep track of angel mint number
   uint256 public                        earlyBirdSaleCount;       
   uint256 public                        preSaleCount;
@@ -96,7 +97,6 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     baseURI = _initBaseURI;
     notRevealedURI = _initNotRevealedURI;
     deliveredURI = _initDeliveredURI;
-    _currentIndex = 1;
   }
 
   
@@ -146,10 +146,10 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     require(quantity > 0, "quantity must be greater than 0");
     require(quantity + publicSaleCount <= PUBLI_SUPPLY,"Not enough PUBLI_SUPPLY");
     require(amount == publicPrice * quantity, "amount is wrong");
-    require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
+    require(IERC20_USDT(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
 
 
-    IERC20(usdt).transferFrom(_msgSender(), address(this), amount);
+    IERC20_USDT(usdt).transferFrom(_msgSender(), address(this), amount);
 
     publicSaleCount += quantity;
     _safeMint(_msgSender(), quantity);
@@ -164,10 +164,10 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     require(MerkleProof.verify(proof, presaleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in presale list");
     require(preSaleMintCount[_msgSender()] + quantity <= preSaleMintLimit[_msgSender()], "the number of caller mint exceeds the upper limit");
     require(amount == publicPrice * quantity, "amount is wrong");
-    require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
+    require(IERC20_USDT(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
 
 
-    IERC20(usdt).transferFrom(_msgSender(), address(this), amount);
+    IERC20_USDT(usdt).transferFrom(_msgSender(), address(this), amount);
 
     preSaleMintCount[_msgSender()] += quantity;
     preSaleCount += quantity;
@@ -278,26 +278,6 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     require(amount > 0, "price must be greater than 0");
     publicPrice = amount;
   }
-  
-  function setAngelSupply(uint256 amount) external onlyOwner {
-    require(amount > 0, "supply must be greater than 0");
-    ANGEL_SUPPLY = amount;
-  }
-
-  function setEarlyBirdSupply(uint256 amount) external onlyOwner {
-    require(amount > 0, "supply must be greater than 0");
-    EARLYBIRD_SUPPLY = amount;
-  }
-
-  function setPreSupply(uint256 amount) external onlyOwner {
-    require(amount > 0, "supply must be greater than 0");
-    PRE_SUPPLY = amount;
-  }
-
-  function setPublicSupply(uint256 amount) external onlyOwner {
-    require(amount > 0, "supply must be greater than 0");
-    PUBLI_SUPPLY = amount;
-  }
 
   function setAngelMintLimit(address account, uint limit) external onlyOwner {
     angelMintLimit[account] = limit;
@@ -336,13 +316,9 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     bridgeContractAddress = _bridge;
   }
 
-  function mintAdmin(address to, uint256 quantity) external onlyOwner{
-    _safeMint(to, quantity);
-  }
-
   function withdrawUSDT() external onlyOwner {
-    uint balance = IERC20(usdt).balanceOf(address(this));
+    uint balance = IERC20_USDT(usdt).balanceOf(address(this));
     require(balance > 0, "no usdt balance");
-    IERC20(usdt).transfer(_msgSender(), balance);
+    IERC20_USDT(usdt).transfer(_msgSender(), balance);
   }
 }
