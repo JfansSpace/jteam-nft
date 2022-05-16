@@ -6,7 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
-import "./interface/IERC20_USDT.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /*
 
@@ -26,6 +27,7 @@ earlyBirdMint
 angelMint 
 */
 contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
+  using SafeERC20 for IERC20;
   using Strings for uint256;
 
 
@@ -146,10 +148,10 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     require(quantity > 0, "quantity must be greater than 0");
     require(quantity + publicSaleCount <= PUBLI_SUPPLY,"Not enough PUBLI_SUPPLY");
     require(amount == publicPrice * quantity, "amount is wrong");
-    require(IERC20_USDT(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
+    require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
 
 
-    IERC20_USDT(usdt).transferFrom(_msgSender(), address(this), amount);
+    IERC20(usdt).safeTransferFrom(_msgSender(), address(this), amount);
 
     publicSaleCount += quantity;
     _safeMint(_msgSender(), quantity);
@@ -164,10 +166,10 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     require(MerkleProof.verify(proof, presaleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in presale list");
     require(preSaleMintCount[_msgSender()] + quantity <= preSaleMintLimit[_msgSender()], "the number of caller mint exceeds the upper limit");
     require(amount == publicPrice * quantity, "amount is wrong");
-    require(IERC20_USDT(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
+    require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
 
 
-    IERC20_USDT(usdt).transferFrom(_msgSender(), address(this), amount);
+    IERC20(usdt).safeTransferFrom(_msgSender(), address(this), amount);
 
     preSaleMintCount[_msgSender()] += quantity;
     preSaleCount += quantity;
@@ -317,8 +319,8 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
   }
 
   function withdrawUSDT() external onlyOwner {
-    uint balance = IERC20_USDT(usdt).balanceOf(address(this));
+    uint balance = IERC20(usdt).balanceOf(address(this));
     require(balance > 0, "no usdt balance");
-    IERC20_USDT(usdt).transfer(_msgSender(), balance);
+    IERC20(usdt).safeTransfer(_msgSender(), balance);
   }
 }
