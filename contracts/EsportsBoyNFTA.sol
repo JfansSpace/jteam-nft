@@ -146,6 +146,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     publicSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
+    require(totalSupply() < ANGEL_SUPPLY + EARLYBIRD_SUPPLY + PRE_SUPPLY + PUBLI_SUPPLY, "mint over totalsupply");
     require(quantity + publicSaleCount <= PUBLI_SUPPLY,"Not enough PUBLI_SUPPLY");
     require(amount == publicPrice * quantity, "amount is wrong");
     require(IERC20(usdt).balanceOf(_msgSender()) >=  amount, "balanceOf usdt is not enough");
@@ -162,6 +163,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     preSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
+    require(totalSupply() < ANGEL_SUPPLY + EARLYBIRD_SUPPLY + PRE_SUPPLY + PUBLI_SUPPLY, "mint over totalsupply");
     require(quantity + preSaleCount <= PRE_SUPPLY,"Not enough PRE_SUPPLY");
     require(MerkleProof.verify(proof, presaleRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in presale list");
     require(preSaleMintCount[_msgSender()] + quantity <= preSaleMintLimit[_msgSender()], "the number of caller mint exceeds the upper limit");
@@ -181,6 +183,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     earlyBirdSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
+    require(totalSupply() < ANGEL_SUPPLY + EARLYBIRD_SUPPLY + PRE_SUPPLY + PUBLI_SUPPLY, "mint over totalsupply");
     require(quantity + earlyBirdSaleCount <= EARLYBIRD_SUPPLY,"Not enough EARLYBIRD_SUPPLY");
     require(MerkleProof.verify(proof, earlybirdRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in earlybird list");
     require(earlyBirdMintCount[_msgSender()] + quantity <= earlyBirdMintLimit[_msgSender()], "the number of caller mint exceeds the upper limit");
@@ -196,6 +199,7 @@ contract EsportsBoyNFTA is ERC721AQueryable, Ownable, Pausable {
     angelSaleActive {
     require(_msgSender() == tx.origin, "No contracts allowed");
     require(quantity > 0, "quantity must be greater than 0");
+    require(totalSupply() < ANGEL_SUPPLY + EARLYBIRD_SUPPLY + PRE_SUPPLY + PUBLI_SUPPLY, "mint over totalsupply");
     require(quantity + angelSaleCount <= ANGEL_SUPPLY, "Not enough ANGEL_SUPPLY");
     require(MerkleProof.verify(proof, angelRoot, keccak256(abi.encodePacked(_msgSender()))),"Address is not in angel list");
     require(angelMintCount[_msgSender()] + quantity <= angelMintLimit[_msgSender()], "the number of caller mint exceeds the upper limit");
